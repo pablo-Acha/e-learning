@@ -1,11 +1,13 @@
 name: Deploy Backend (Express)
 
 on:
+  workflow_dispatch:  # Permite ejecución manual desde GitHub Actions
   push:
     branches:
       - main
     paths:
       - "backend/**"
+      - ".github/workflows/ci_back.yml"  # Se ejecuta también cuando se modifica el workflow
 
 jobs:
   deploy:
