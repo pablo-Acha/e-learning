@@ -8,6 +8,7 @@ on:
     paths:
       - 'elearning-frontend/**'
 
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
