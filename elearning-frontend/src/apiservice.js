@@ -1,4 +1,4 @@
-const API_URL = "http://3.144.152.48"
+const API_URL = "http://localhost:4000"
 
 const callAPI = async (endpoint, method = "GET", token = null, body = null, isFormData = false) => {
   const headers = {}
