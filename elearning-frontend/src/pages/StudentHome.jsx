@@ -4,7 +4,7 @@ import ClassCard from "../components/ClassCard";
 import ModuleCard from "../components/ModuleCard";
 import { useAuthStore } from "../store/useAuthStore";
 
-const API_URL = "/api";
+const API_URL = "http://3.144.152.48/api";
 
 export default function StudentHome() {
   const { token, userId } = useAuthStore();
