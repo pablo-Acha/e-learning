@@ -31,6 +31,9 @@ app.use("/modules", moduleRoutes);
 
 // Rutas de videos
 app.use("/videos", videoRoutes);
+app.get("/test-error", (req, res) => {
+  throw new Error("Error de prueba para Discord");
+});
 
 // Rutas de upload
 app.use("/upload", uploadRoutes);
