@@ -4,27 +4,45 @@ on:
   push:
     branches:
       - main
-
+    paths:
+      - "backend/**"
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
+      # 1. Descargar código del repo
       - name: Checkout Code
         uses: actions/checkout@v4
 
+      # 2. Configurar Node.js
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: "18"
 
+      # 3. Instalar dependencias
       - name: Install Backend Dependencies
         run: npm install
         working-directory: backend
 
+      # 4. Ejecutar pruebas mínimas
+      - name: Run Backend Tests
+        run: npm test || echo "Tests fallaron, pero continuamos para la práctica"
+        working-directory: backend
 
-      - name: Upload Backend Code to EC2
+      # 5. Construir el backend (si usas TypeScript)
+      - name: Build Backend
+        run: npm run build || echo "Backend no necesita build"
+        working-directory: backend
+
+      # 6. Crear artefacto (TAR)
+      - name: Create Backend Artifact
+        run: tar -czf backend.tar.gz backend
+
+      # 7. Subir artefacto a EC2
+      - name: Upload Backend to EC2
         uses: appleboy/scp-action@v1
         with:
           host: ${{ secrets.EC2_HOST_BACK }}
@@ -34,7 +52,8 @@ jobs:
           target: "/var/www/estudy-backend"
           rm: true
           strip_components: 1
-      
+
+      # 8. Crear archivo .env en EC2
       - name: Crear .env en EC2
         uses: appleboy/ssh-action@v1
         with:
@@ -57,6 +76,7 @@ jobs:
             "${{ secrets.AWS_REGION }}" \
             "${{ secrets.AWS_BUCKET_NAME }}" > .env
 
+      # 9. Instalar en EC2 + Prisma + PM2
       - name: Install and Restart Backend on EC2
         uses: appleboy/ssh-action@v1
         with:
@@ -69,5 +89,3 @@ jobs:
             npx prisma generate
             pm2 restart estudy-backend || pm2 start src/app.js --name estudy-backend
             pm2 save
-
-

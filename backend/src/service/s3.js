@@ -20,6 +20,7 @@ export const uploadVideoToS3 = async (fileBuffer, classId, moduleId, fileName, m
     ContentType: mimeType
   };
 
+  
   await s3.send(new PutObjectCommand(params));
 
   return `https://${bucket}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
