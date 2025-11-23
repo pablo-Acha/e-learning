@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. Descargar código del repo
+      # 1. Descargar código del repo.
       - name: Checkout Code
         uses: actions/checkout@v4
 
