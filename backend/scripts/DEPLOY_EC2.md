@@ -6,31 +6,43 @@ Esta guía te ayudará a configurar el sistema de backups automáticos en tu ins
 
 Los scripts deben estar ubicados en la **instancia EC2 del backend**, ya que es donde se encuentra la conexión a la base de datos PostgreSQL.
 
-**Ruta recomendada en EC2:**
-```
-/home/ubuntu/e-learning/backend/scripts/
-```
-
-O la ruta donde tengas desplegado tu backend.
-
 ## 🔧 Paso 1: Conectarse a la Instancia EC2 del Backend
 
 ```bash
 ssh -i tu-clave.pem ubuntu@tu-ip-ec2-backend
 ```
 
-## 📦 Paso 2: Instalar PostgreSQL Client
+## 📦 Paso 2: Instalar PostgreSQL Client 17
+
+**IMPORTANTE**: Si tu base de datos RDS es PostgreSQL 17, necesitas instalar el cliente versión 17.
+
+### Opción A: Usar el script automático (Recomendado)
 
 ```bash
-sudo apt-get update
-sudo apt-get install -y postgresql-client
+cd /var/www/estudy-backend
+./scripts/install-postgresql-client-17.sh
 ```
 
-Verifica la instalación:
+### Opción B: Instalación manual
+
+```bash
+# Agregar repositorio oficial de PostgreSQL
+sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
+sudo apt-get update
+
+# Instalar PostgreSQL Client 17
+sudo apt-get install -y postgresql-client-17
+```
+
+### Verificar instalación:
+
 ```bash
 pg_dump --version
 psql --version
 ```
+
+**Nota**: Si ves un error de "server version mismatch", significa que necesitas actualizar el cliente a la versión 17.
 
 ## 📁 Paso 3: Copiar los Scripts al Servidor
 
