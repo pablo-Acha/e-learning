@@ -8,67 +8,100 @@ on:
     paths:
       - "elearning-frontend/**"
 
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}/elearning-frontend
+
 jobs:
-  deploy:
+  build-and-deploy:
     runs-on: ubuntu-latest
 
     steps:
       # 1. Descargar código
       - uses: actions/checkout@v4
 
-      # 2. Configurar Node
+      # 2. Configurar Docker Buildx
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # 3. Login al GitHub Container Registry
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # 4. Extraer metadatos para Docker
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=sha,prefix=,suffix=-{{sha}}
+            type=ref,event=branch
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+
+      # 5. Configurar Node para pruebas
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: "npm"
           cache-dependency-path: elearning-frontend/package-lock.json
 
-      # 3. Instalar dependencias
+      # 6. Instalar dependencias para pruebas
       - name: Install Frontend Dependencies
         run: npm ci
         working-directory: elearning-frontend
 
-      # 4. Ejecutar pruebas mínimas
+      # 7. Ejecutar pruebas (ahora detienen el pipeline si fallan)
       - name: Run Frontend Tests
-        run: npm test || echo "Tests fallaron, pero no detenemos el deploy"
+        run: npm test -- --watchAll=false --passWithNoTests
         working-directory: elearning-frontend
 
-      # 5. Build del frontend
-      - run: npm run build
+      # 8. Ejecutar linting
+      - name: Run ESLint
+        run: npm run lint
         working-directory: elearning-frontend
 
-      # 6. Crear artefacto
-      - run: tar -C elearning-frontend -czf frontend-dist.tar.gz dist
+      # 9. Construir imagen Docker
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./elearning-frontend
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
-      # 7. Deploy a EC2
-      - run: |
+      # 10. Desplegar a EC2
+      - name: Deploy to EC2
+        if: github.ref == 'refs/heads/main'
+        run: |
           echo "${{ secrets.EC2_SSH_KEY }}" > key.pem
           chmod 600 key.pem
-
-          # Subir artefacto
-          scp -i key.pem -o StrictHostKeyChecking=no frontend-dist.tar.gz "${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:/tmp/frontend-dist.tar.gz"
-
-          # Configurar NGINX en EC2
-          ssh -i key.pem -o StrictHostKeyChecking=no "${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}" "
-            sudo apt-get update -y &&
-            sudo apt-get install -y nginx &&
-            sudo mkdir -p /var/www/elearning-frontend &&
-            sudo tar -xzf /tmp/frontend-dist.tar.gz -C /var/www/elearning-frontend &&
-            sudo chown -R www-data:www-data /var/www/elearning-frontend &&
-
-            # Configurar sitio en NGINX
-            echo 'server {
-              listen 80;
-              server_name _;
-              root /var/www/elearning-frontend/dist;
-              index index.html;
-              location / {
-                try_files \$uri /index.html;
-              }
-            }' | sudo tee /etc/nginx/sites-available/elearning-frontend >/dev/null &&
-
-            sudo ln -sf /etc/nginx/sites-available/elearning-frontend /etc/nginx/sites-enabled/elearning-frontend &&
-            sudo rm -f /etc/nginx/sites-enabled/default &&
-            sudo nginx -t &&
-            sudo systemctl restart nginx
-          "
+          
+          # Comando para desplegar la imagen Docker en EC2
+          ssh -i key.pem -o StrictHostKeyChecking=no ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
+          # Pull de la imagen más reciente
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ${{ env.REGISTRY }} -u ${{ github.actor }} --password-stdin
+          docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          
+          # Detener y remover contenedor anterior si existe
+          docker stop elearning-frontend || true
+          docker rm elearning-frontend || true
+          
+          # Ejecutar nuevo contenedor
+          docker run -d \
+            --name elearning-frontend \
+            -p 80:80 \
+            --restart unless-stopped \
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          
+          # Limpiar imágenes antiguas
+          docker image prune -af
+          EOF
+          
+          rm -f key.pem
