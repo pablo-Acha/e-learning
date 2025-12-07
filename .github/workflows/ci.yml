@@ -116,22 +116,22 @@ jobs:
           DOCKER_CMD="sudo docker"
           
           # Pull de la imagen más reciente
-          echo "${{ secrets.GITHUB_TOKEN }}" | \\\$DOCKER_CMD login ${{ env.REGISTRY }} -u ${{ github.actor }} --password-stdin
-          \\\$DOCKER_CMD pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          echo "${{ secrets.GITHUB_TOKEN }}" | \${DOCKER_CMD} login ${{ env.REGISTRY }} -u ${{ github.actor }} --password-stdin
+          \${DOCKER_CMD} pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
           
           # Detener y remover contenedor anterior si existe
-          \\\$DOCKER_CMD stop elearning-frontend || true
-          \\\$DOCKER_CMD rm elearning-frontend || true
+          \${DOCKER_CMD} stop elearning-frontend || true
+          \${DOCKER_CMD} rm elearning-frontend || true
           
           # Ejecutar nuevo contenedor
-          \\\$DOCKER_CMD run -d \\
+          \${DOCKER_CMD} run -d \\
             --name elearning-frontend \\
             -p 80:80 \\
             --restart unless-stopped \\
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
           
           # Limpiar imágenes antiguas
-          \\\$DOCKER_CMD image prune -af
+          \${DOCKER_CMD} image prune -af
           REMOTE_SCRIPT
           
           rm -f key.pem
