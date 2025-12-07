@@ -10,7 +10,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository_owner }}/elearning-frontend
+  IMAGE_NAME: elearning-frontend
 
 jobs:
   build-and-deploy:
@@ -82,7 +82,7 @@ jobs:
           ssh -i key.pem -o StrictHostKeyChecking=no ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
           # Pull de la imagen más reciente
           echo "${{ secrets.GITHUB_TOKEN }}" | docker login ${{ env.REGISTRY }} -u ${{ github.actor }} --password-stdin
-          docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          docker pull ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:latest
           
           # Detener y remover contenedor anterior si existe
           docker stop elearning-frontend || true
@@ -93,7 +93,7 @@ jobs:
             --name elearning-frontend \
             -p 80:80 \
             --restart unless-stopped \
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+            ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:latest
           
           # Limpiar imágenes antiguas
           docker image prune -af
