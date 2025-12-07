@@ -10,7 +10,6 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository_owner }}/elearning-frontend
 
 jobs:
   build-and-deploy:
@@ -22,6 +21,13 @@ jobs:
     steps:
       # 1. Descargar código
       - uses: actions/checkout@v4
+      
+      # 1.5. Convertir nombre del repositorio a minúsculas (Docker requiere nombres en minúsculas)
+      - name: Set image name in lowercase
+        run: |
+          REPO_OWNER_LOWER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          echo "IMAGE_NAME=${REPO_OWNER_LOWER}/elearning-frontend" >> $GITHUB_ENV
+          echo "Image name set to: ${REPO_OWNER_LOWER}/elearning-frontend"
 
       # 2. Configurar Docker Buildx
       - name: Set up Docker Buildx
