@@ -1,135 +1,70 @@
-# name: Deploy Backend (Express)
+name: Backend CI/CD
 
-# on:
-#   workflow_dispatch:  # Permite ejecución manual desde GitHub Actions
-#   push:
-#     branches:
-#       - main
-#     paths:
-#       - "backend/**"
-#       - ".github/workflows/ci_back.yml"  # Se ejecuta también cuando se modifica el workflow
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend-ci-cd.yml"
+  workflow_dispatch:
 
-# jobs:
-#   deploy:
-#     runs-on: ubuntu-latest
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
 
-#     steps:
-#       # 1. Descargar código del repo.
-#       - name: Checkout Code
-#         uses: actions/checkout@v4
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-#       # 2. Configurar Node.js
-#       - name: Setup Node
-#         uses: actions/setup-node@v4
-#         with:
-#           node-version: "18"
+      - name: Log in to DockerHub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USER_PABLO }}
+          password: ${{ secrets.DOCKERHUB_TOKEN_PABLO }}
 
-#       # 3. Instalar dependencias
-#       - name: Install Backend Dependencies
-#         run: npm install
-#         working-directory: backend
+      - name: Build and tag Docker image
+        run: |
+          docker build -t pablo/backend:latest ./backend
+          docker tag pablo/backend:latest pablo/backend:${{ github.sha }}
 
-#       # 4. Ejecutar pruebas mínimas
-#       - name: Run Backend Tests
-#         run: npm test || echo "Tests fallaron, pero continuamos para la práctica"
-#         working-directory: backend
+      - name: Push images to DockerHub
+        run: |
+          docker push pablo/backend:latest
+          docker push pablo/backend:${{ github.sha }}
 
-#       # 5. Construir el backend (si usas TypeScript)
-#       - name: Build Backend
-#         run: npm run build || echo "Backend no necesita build"
-#         working-directory: backend
+  deploy:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    steps:
+      - name: SSH and deploy on EC2
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.EC2_HOST_BACK }}
+          username: ${{ secrets.EC2_USER_BACK }}
+          key: ${{ secrets.EC2_KEY_BACK }}
+          script: |
+            # Pull latest image
+            docker pull pablo/backend:latest
 
-#       # 6. Crear artefacto (TAR) - Incluyendo todos los archivos
-#       - name: Create Backend Artifact
-#         run: |
-#           # Crear TAR incluyendo todos los archivos, excluyendo solo node_modules y .env
-#           tar -czf backend.tar.gz \
-#             --exclude='backend/node_modules' \
-#             --exclude='backend/.env' \
-#             --exclude='backend/backups' \
-#             --exclude='backend/logs' \
-#             --exclude='*.sql' \
-#             --exclude='*.sql.gz' \
-#             backend
+            # Crear directorio si no existe
+            mkdir -p /var/www/estudy-backend
 
-#       # 7. Subir artefacto a EC2 usando el TAR
-#       - name: Upload Backend to EC2
-#         uses: appleboy/scp-action@v1
-#         with:
-#           host: ${{ secrets.EC2_HOST_BACK }}
-#           username: ${{ secrets.EC2_USER_BACK }}
-#           key: ${{ secrets.EC2_KEY_BACK }}
-#           source: "backend.tar.gz"
-#           target: "/tmp"
-          
-#       # 7b. Extraer el TAR en EC2
-#       - name: Extract Backend on EC2
-#         uses: appleboy/ssh-action@v1
-#         with:
-#           host: ${{ secrets.EC2_HOST_BACK }}
-#           username: ${{ secrets.EC2_USER_BACK }}
-#           key: ${{ secrets.EC2_KEY_BACK }}
-#           script: |
-#             # Crear directorio si no existe
-#             sudo mkdir -p /var/www/estudy-backend
-#             # Extraer TAR (strip_components=1 para quitar la carpeta 'backend' del path)
-#             sudo tar -xzf /tmp/backend.tar.gz -C /var/www --strip-components=1
-#             # Limpiar TAR temporal
-#             rm -f /tmp/backend.tar.gz
-#             # Asegurar permisos correctos
-#             sudo chown -R ${{ secrets.EC2_USER_BACK }}:${{ secrets.EC2_USER_BACK }} /var/www/estudy-backend
-#             # Crear directorios necesarios para backups y logs
-#             mkdir -p /var/www/estudy-backend/backups
-#             mkdir -p /var/www/estudy-backend/logs
+            # Crear .env en EC2
+            cat <<EOF > /var/www/estudy-backend/.env
+            DATABASE_URL="${{ secrets.DATABASE_URL }}"
+            PORT="${{ secrets.PORT }}"
+            JWT_SECRET="${{ secrets.JWT_SECRET }}"
+            DB_HOST="${{ secrets.DB_HOST }}"
+            DB_USER="${{ secrets.DB_USER }}"
+            DB_PASSWORD="${{ secrets.DB_PASSWORD }}"
+            DB_NAME="${{ secrets.DB_NAME }}"
+            DB_PORT="${{ secrets.DB_PORT }}"
+            EOF
 
-#       # 8. Crear archivo .env en EC2
-#       - name: Crear .env en EC2
-#         uses: appleboy/ssh-action@v1
-#         with:
-#           host: ${{ secrets.EC2_HOST_BACK }}
-#           username: ${{ secrets.EC2_USER_BACK }}
-#           key: ${{ secrets.EC2_KEY_BACK }}
-#           script: |
-#             cd /var/www/estudy-backend
-#             printf "DATABASE_URL=\"%s\"\nPORT=%s\nJWT_SECRET=%s\nDB_HOST=%s\nDB_USER=%s\nDB_PASSWORD=%s\nDB_NAME=%s\nDB_PORT=%s\nAWS_ACCESS_KEY_ID=%s\nAWS_SECRET_ACCESS_KEY=%s\nAWS_REGION=%s\nAWS_BUCKET_NAME=%s\n" \
-#             "${{ secrets.DATABASE_URL }}" \
-#             "${{ secrets.PORT }}" \
-#             "${{ secrets.JWT_SECRET }}" \
-#             "${{ secrets.DB_HOST }}" \
-#             "${{ secrets.DB_USER }}" \
-#             "${{ secrets.DB_PASSWORD }}" \
-#             "${{ secrets.DB_NAME }}" \
-#             "${{ secrets.DB_PORT }}" \
-#             "${{ secrets.AWS_ACCESS_KEY_ID }}" \
-#             "${{ secrets.AWS_SECRET_ACCESS_KEY }}" \
-#             "${{ secrets.AWS_REGION }}" \
-#             "${{ secrets.AWS_BUCKET_NAME }}" > .env
-
-#       # 9. Dar permisos de ejecución a los scripts
-#       - name: Set Script Permissions
-#         uses: appleboy/ssh-action@v1
-#         with:
-#           host: ${{ secrets.EC2_HOST_BACK }}
-#           username: ${{ secrets.EC2_USER_BACK }}
-#           key: ${{ secrets.EC2_KEY_BACK }}
-#           script: |
-#             cd /var/www/estudy-backend
-#             # Dar permisos de ejecución a todos los scripts
-#             if [ -d "scripts" ]; then
-#               chmod +x scripts/*.sh
-#               echo "✓ Permisos de ejecución asignados a los scripts"
-#             fi
-
-#       # 10. Instalar en EC2 + Prisma + PM2
-#       - name: Install and Restart Backend on EC2
-#         uses: appleboy/ssh-action@v1
-#         with:
-#           host: ${{ secrets.EC2_HOST_BACK }}
-#           username: ${{ secrets.EC2_USER_BACK }}
-#           key: ${{ secrets.EC2_KEY_BACK }}
-#           script: |
-#             cd /var/www/estudy-backend
-#             npm install
-#             npx prisma generate
-#             pm2 restart estudy-backend || pm2 start src/app.js --name estudy-backend
-#             pm2 save
+            # Levantar contenedor (con restart automático)
+            docker stop backend || true
+            docker rm backend || true
+            docker run -d --name backend --restart always --env-file /var/www/estudy-backend/.env -p 4000:4000 pablo/backend:latest
