@@ -82,51 +82,56 @@ jobs:
           chmod 600 key.pem
           
           # Comando para desplegar la imagen Docker en EC2
-          ssh -i key.pem -o StrictHostKeyChecking=no ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << EOF
+          ssh -i key.pem -o StrictHostKeyChecking=no ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} bash << 'REMOTE_SCRIPT'
+          set -e
+          
           # Instalar Docker si no está instalado
           if ! command -v docker &> /dev/null; then
             echo "Instalando Docker..."
             sudo apt-get update
-            sudo apt-get install -y ca-certificates curl
+            sudo apt-get install -y ca-certificates curl gnupg lsb-release
+            
+            # Obtener el código de versión de Ubuntu
+            VERSION_CODENAME=$(lsb_release -cs)
+            
+            # Instalar Docker usando el método oficial
             sudo install -m 0755 -d /etc/apt/keyrings
             sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
             sudo chmod a+r /etc/apt/keyrings/docker.asc
-            echo \\
-              "deb [arch=\$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu \\
-              \$(. /etc/os-release && echo "\\\$VERSION_CODENAME") stable" | \\
-              sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+            
+            echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu ${VERSION_CODENAME} stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+            
             sudo apt-get update
             sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
-            sudo usermod -aG docker \\\$USER
+            
+            # Agregar usuario al grupo docker (requiere logout/login para tomar efecto)
+            sudo usermod -aG docker $USER || true
           fi
           
           # Asegurar que el servicio Docker esté corriendo
           sudo systemctl start docker || true
           sudo systemctl enable docker || true
           
-          # Usar sudo para comandos docker si el usuario no está en el grupo docker
-          DOCKER_CMD="docker"
-          if ! docker ps &> /dev/null; then
-            DOCKER_CMD="sudo docker"
-          fi
+          # Usar sudo para comandos docker (ya que el grupo docker requiere logout)
+          DOCKER_CMD="sudo docker"
           
           # Pull de la imagen más reciente
-          echo "${{ secrets.GITHUB_TOKEN }}" | \\\$DOCKER_CMD login ${{ env.REGISTRY }} -u ${{ github.actor }} --password-stdin
-          \\\$DOCKER_CMD pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          echo "${{ secrets.GITHUB_TOKEN }}" | $DOCKER_CMD login ${{ env.REGISTRY }} -u ${{ github.actor }} --password-stdin
+          $DOCKER_CMD pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
           
           # Detener y remover contenedor anterior si existe
-          \\\$DOCKER_CMD stop elearning-frontend || true
-          \\\$DOCKER_CMD rm elearning-frontend || true
+          $DOCKER_CMD stop elearning-frontend || true
+          $DOCKER_CMD rm elearning-frontend || true
           
           # Ejecutar nuevo contenedor
-          \\\$DOCKER_CMD run -d \\
-            --name elearning-frontend \\
-            -p 80:80 \\
-            --restart unless-stopped \\
+          $DOCKER_CMD run -d \
+            --name elearning-frontend \
+            -p 80:80 \
+            --restart unless-stopped \
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
           
           # Limpiar imágenes antiguas
-          \\\$DOCKER_CMD image prune -af
-          EOF
+          $DOCKER_CMD image prune -af
+          REMOTE_SCRIPT
           
           rm -f key.pem
