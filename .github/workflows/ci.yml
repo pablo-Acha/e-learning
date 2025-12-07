@@ -55,12 +55,7 @@ jobs:
         run: npm ci
         working-directory: elearning-frontend
 
-      # 7. Ejecutar pruebas (ahora detienen el pipeline si fallan)
-      - name: Run Frontend Tests
-        run: npm test -- --watchAll=false --passWithNoTests
-        working-directory: elearning-frontend
-
-      # 8. Ejecutar linting
+      # 7. Ejecutar linting (sustituye pruebas ya que no hay script test)
       - name: Run ESLint
         run: npm run lint
         working-directory: elearning-frontend
