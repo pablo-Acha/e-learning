@@ -27,13 +27,13 @@ jobs:
 
       - name: Build and tag Docker image
         run: |
-          docker build -t pablo/backend:latest ./backend
-          docker tag pablo/backend:latest pablo/backend:${{ github.sha }}
+          docker build -t pabloacha2/backend:latest ./backend
+          docker tag pabloacha2/backend:latest pabloacha2/backend:${{ github.sha }}
 
       - name: Push images to DockerHub
         run: |
-          docker push pablo/backend:latest
-          docker push pablo/backend:${{ github.sha }}
+          docker push pabloacha2/backend:latest
+          docker push pabloacha2/backend:${{ github.sha }}
 
   deploy:
     needs: build-and-push
@@ -47,7 +47,7 @@ jobs:
           key: ${{ secrets.EC2_KEY_BACK }}
           script: |
             # Pull latest image
-            docker pull pablo/backend:latest
+            docker pull pabloacha2/backend:latest
 
             # Crear directorio si no existe
             mkdir -p /var/www/estudy-backend
@@ -67,4 +67,4 @@ jobs:
             # Levantar contenedor (con restart automático)
             docker stop backend || true
             docker rm backend || true
-            docker run -d --name backend --restart always --env-file /var/www/estudy-backend/.env -p 4000:4000 pablo/backend:latest
+            docker run -d --name backend --restart always --env-file /var/www/estudy-backend/.env -p 4000:4000 pabloacha2/backend:latest
