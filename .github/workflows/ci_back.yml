@@ -52,13 +52,13 @@ jobs:
 
             cat <<EOF > /var/www/estudy-backend/.env
             DATABASE_URL="${{ secrets.DATABASE_URL }}"
-            PORT="${{ secrets.PORT }}"
-            JWT_SECRET="${{ secrets.JWT_SECRET }}"
-            DB_HOST="${{ secrets.DB_HOST }}"
-            DB_USER="${{ secrets.DB_USER }}"
-            DB_PASSWORD="${{ secrets.DB_PASSWORD }}"
-            DB_NAME="${{ secrets.DB_NAME }}"
-            DB_PORT="${{ secrets.DB_PORT }}"
+            PORT=${{ secrets.PORT }}
+            JWT_SECRET=${{ secrets.JWT_SECRET }}
+            DB_HOST=${{ secrets.DB_HOST }}
+            DB_USER=${{ secrets.DB_USER }}
+            DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+            DB_NAME=${{ secrets.DB_NAME }}
+            DB_PORT=${{ secrets.DB_PORT }}
             EOF
 
             docker stop backend || true
