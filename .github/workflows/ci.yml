@@ -103,7 +103,7 @@ jobs:
           echo "${{ secrets.EC2_SSH_KEY }}" > key.pem
           chmod 600 key.pem
           
-          USE_DOCKERHUB="true"  # Cambia a "true" para usar Docker Hub en lugar de GHCR
+          USE_DOCKERHUB="true"
           
           if [ "$USE_DOCKERHUB" = "true" ]; then
             REGISTRY_TO_USE="${{ env.DOCKERHUB_REGISTRY }}"
@@ -119,7 +119,7 @@ jobs:
             echo "Usando GitHub Container Registry para despliegue"
           fi
           
-          ssh -i key.pem -o StrictHostKeyChecking=no ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} bash << 'REMOTE_SCRIPT'
+          ssh -i key.pem -o StrictHostKeyChecking=no ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} bash << EOF
           set -e
           
           if ! command -v docker &> /dev/null; then
@@ -127,18 +127,18 @@ jobs:
             sudo apt-get update
             sudo apt-get install -y ca-certificates curl gnupg lsb-release
             
-            VERSION_CODENAME=$(lsb_release -cs)
+            VERSION_CODENAME=\$(lsb_release -cs)
             
             sudo install -m 0755 -d /etc/apt/keyrings
             sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
             sudo chmod a+r /etc/apt/keyrings/docker.asc
             
-            echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu ${VERSION_CODENAME} stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+            echo "deb [arch=\$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu \${VERSION_CODENAME} stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
             
             sudo apt-get update
             sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
             
-            sudo usermod -aG docker $USER || true
+            sudo usermod -aG docker \$USER || true
           fi
           
           sudo systemctl start docker || true
@@ -146,32 +146,40 @@ jobs:
           
           DOCKER_CMD="sudo docker"
           
-          echo "$LOGIN_TOKEN" | $DOCKER_CMD login $REGISTRY_TO_USE -u $LOGIN_USER --password-stdin
+          if [ "$REGISTRY_TO_USE" = "docker.io" ]; then
+            # Para Docker Hub
+            echo "{\\"auths\\":{\\"https://index.docker.io/v1/\\":{\\"username\\":\\"$LOGIN_USER\\",\\"password\\":\\"$LOGIN_TOKEN\\"}}}" | sudo tee /root/.docker/config.json > /dev/null
+          else
+            # Para GHCR
+            echo "{\\"auths\\":{\\"$REGISTRY_TO_USE\\":{\\"username\\":\\"$LOGIN_USER\\",\\"password\\":\\"$LOGIN_TOKEN\\"}}}" | sudo tee /root/.docker/config.json > /dev/null
+          fi
           
-          $DOCKER_CMD pull $REGISTRY_TO_USE/$IMAGE_TO_USE:latest
+          sudo chmod 600 /root/.docker/config.json
           
-          $DOCKER_CMD stop elearning-frontend 2>/dev/null || true
-          $DOCKER_CMD rm -f elearning-frontend 2>/dev/null || true
+          \$DOCKER_CMD pull $REGISTRY_TO_USE/$IMAGE_TO_USE:latest
           
-          PORT_80_CONTAINER=$($DOCKER_CMD ps -q --filter "publish=80")
-          if [ ! -z "$PORT_80_CONTAINER" ]; then
-            echo "Deteniendo contenedor que usa el puerto 80: $PORT_80_CONTAINER"
-            $DOCKER_CMD stop $PORT_80_CONTAINER 2>/dev/null || true
-            $DOCKER_CMD rm -f $PORT_80_CONTAINER 2>/dev/null || true
+          \$DOCKER_CMD stop elearning-frontend 2>/dev/null || true
+          \$DOCKER_CMD rm -f elearning-frontend 2>/dev/null || true
+          
+          PORT_80_CONTAINER=\$(\$DOCKER_CMD ps -q --filter "publish=80")
+          if [ ! -z "\$PORT_80_CONTAINER" ]; then
+            echo "Deteniendo contenedor que usa el puerto 80: \$PORT_80_CONTAINER"
+            \$DOCKER_CMD stop \$PORT_80_CONTAINER 2>/dev/null || true
+            \$DOCKER_CMD rm -f \$PORT_80_CONTAINER 2>/dev/null || true
           fi
           
           sleep 2
           
-          $DOCKER_CMD run -d \
+          \$DOCKER_CMD run -d \
             --name elearning-frontend \
             -p 8080:80 \
             --restart unless-stopped \
             $REGISTRY_TO_USE/$IMAGE_TO_USE:latest
           
-          $DOCKER_CMD image prune -af
+          \$DOCKER_CMD image prune -af
           
           echo "Despliegue completado desde: $REGISTRY_TO_USE"
           echo "Imagen: $REGISTRY_TO_USE/$IMAGE_TO_USE:latest"
-          REMOTE_SCRIPT
+          EOF
           
           rm -f key.pem
