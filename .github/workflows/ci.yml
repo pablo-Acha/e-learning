@@ -10,6 +10,8 @@ on:
 
 env:
   REGISTRY: ghcr.io
+  DOCKERHUB_REGISTRY: docker.io
+  DOCKERHUB_USERNAME: "leonardocz"  
 
 jobs:
   build-and-deploy:
@@ -19,21 +21,21 @@ jobs:
       packages: write
 
     steps:
-      # 1. Descargar código
+      
       - uses: actions/checkout@v4
       
-      # 1.5. Convertir nombre del repositorio a minúsculas (Docker requiere nombres en minúsculas)
       - name: Set image name in lowercase
         run: |
           REPO_OWNER_LOWER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
           echo "IMAGE_NAME=${REPO_OWNER_LOWER}/elearning-frontend" >> $GITHUB_ENV
           echo "Image name set to: ${REPO_OWNER_LOWER}/elearning-frontend"
+          
+          echo "DOCKERHUB_IMAGE_NAME=${{ env.DOCKERHUB_USERNAME }}/elearning-frontend" >> $GITHUB_ENV
+          echo "Docker Hub image name: ${{ env.DOCKERHUB_USERNAME }}/elearning-frontend"
 
-      # 2. Configurar Docker Buildx
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      # 3. Login al GitHub Container Registry
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
         with:
@@ -41,35 +43,39 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # 4. Extraer metadatos para Docker
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.DOCKERHUB_REGISTRY }}
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
       - name: Extract Docker metadata
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          images: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+            ${{ env.DOCKERHUB_REGISTRY }}/${{ env.DOCKERHUB_IMAGE_NAME }}
           tags: |
             type=sha,prefix=,suffix=-{{sha}}
             type=ref,event=branch
             type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
 
-      # 5. Configurar Node para pruebas
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: "npm"
           cache-dependency-path: elearning-frontend/package-lock.json
 
-      # 6. Instalar dependencias para pruebas
       - name: Install Frontend Dependencies
         run: npm ci
         working-directory: elearning-frontend
 
-      # 7. Ejecutar linting (sustituye pruebas ya que no hay script test)
       - name: Run ESLint
         run: npm run lint
         working-directory: elearning-frontend
 
-      # 9. Construir imagen Docker
       - name: Build and push Docker image
         uses: docker/build-push-action@v6
         with:
@@ -80,27 +86,49 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      # 10. Desplegar a EC2
+      - name: Verify images pushed
+        run: |
+          echo "Imágenes subidas exitosamente a:"
+          echo "1. GitHub Container Registry:"
+          echo "   - ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest"
+          echo "   - URL: https://github.com/${{ github.repository_owner }}?tab=packages"
+          echo ""
+          echo "2. Docker Hub:"
+          echo "   - ${{ env.DOCKERHUB_REGISTRY }}/${{ env.DOCKERHUB_IMAGE_NAME }}:latest"
+          echo "   - URL: https://hub.docker.com/r/${{ secrets.DOCKERHUB_USERNAME }}/elearning-frontend"
+
       - name: Deploy to EC2
         if: github.ref == 'refs/heads/main'
         run: |
           echo "${{ secrets.EC2_SSH_KEY }}" > key.pem
           chmod 600 key.pem
           
-          # Comando para desplegar la imagen Docker en EC2
+          USE_DOCKERHUB="true"  # Cambia a "true" para usar Docker Hub en lugar de GHCR
+          
+          if [ "$USE_DOCKERHUB" = "true" ]; then
+            REGISTRY_TO_USE="${{ env.DOCKERHUB_REGISTRY }}"
+            IMAGE_TO_USE="${{ env.DOCKERHUB_IMAGE_NAME }}"
+            LOGIN_USER="${{ secrets.DOCKERHUB_USERNAME }}"
+            LOGIN_TOKEN="${{ secrets.DOCKERHUB_TOKEN }}"
+            echo "Usando Docker Hub para despliegue"
+          else
+            REGISTRY_TO_USE="${{ env.REGISTRY }}"
+            IMAGE_TO_USE="${{ env.IMAGE_NAME }}"
+            LOGIN_USER="${{ github.actor }}"
+            LOGIN_TOKEN="${{ secrets.GITHUB_TOKEN }}"
+            echo "Usando GitHub Container Registry para despliegue"
+          fi
+          
           ssh -i key.pem -o StrictHostKeyChecking=no ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} bash << 'REMOTE_SCRIPT'
           set -e
           
-          # Instalar Docker si no está instalado
           if ! command -v docker &> /dev/null; then
             echo "Instalando Docker..."
             sudo apt-get update
             sudo apt-get install -y ca-certificates curl gnupg lsb-release
             
-            # Obtener el código de versión de Ubuntu
             VERSION_CODENAME=$(lsb_release -cs)
             
-            # Instalar Docker usando el método oficial
             sudo install -m 0755 -d /etc/apt/keyrings
             sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
             sudo chmod a+r /etc/apt/keyrings/docker.asc
@@ -110,26 +138,21 @@ jobs:
             sudo apt-get update
             sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
             
-            # Agregar usuario al grupo docker (requiere logout/login para tomar efecto)
             sudo usermod -aG docker $USER || true
           fi
           
-          # Asegurar que el servicio Docker esté corriendo
           sudo systemctl start docker || true
           sudo systemctl enable docker || true
           
-          # Usar sudo para comandos docker (ya que el grupo docker requiere logout)
           DOCKER_CMD="sudo docker"
           
-          # Pull de la imagen más reciente
-          echo "${{ secrets.GITHUB_TOKEN }}" | $DOCKER_CMD login ${{ env.REGISTRY }} -u ${{ github.actor }} --password-stdin
-          $DOCKER_CMD pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          echo "$LOGIN_TOKEN" | $DOCKER_CMD login $REGISTRY_TO_USE -u $LOGIN_USER --password-stdin
           
-          # Detener y remover contenedor anterior si existe (forzar si es necesario)
+          $DOCKER_CMD pull $REGISTRY_TO_USE/$IMAGE_TO_USE:latest
+          
           $DOCKER_CMD stop elearning-frontend 2>/dev/null || true
           $DOCKER_CMD rm -f elearning-frontend 2>/dev/null || true
           
-          # Verificar si hay otro contenedor usando el puerto 80 y detenerlo
           PORT_80_CONTAINER=$($DOCKER_CMD ps -q --filter "publish=80")
           if [ ! -z "$PORT_80_CONTAINER" ]; then
             echo "Deteniendo contenedor que usa el puerto 80: $PORT_80_CONTAINER"
@@ -137,18 +160,18 @@ jobs:
             $DOCKER_CMD rm -f $PORT_80_CONTAINER 2>/dev/null || true
           fi
           
-          # Esperar un momento para asegurar que el puerto se libere
           sleep 2
           
-          # Ejecutar nuevo contenedor
           $DOCKER_CMD run -d \
             --name elearning-frontend \
             -p 8080:80 \
             --restart unless-stopped \
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+            $REGISTRY_TO_USE/$IMAGE_TO_USE:latest
           
-          # Limpiar imágenes antiguas
           $DOCKER_CMD image prune -af
+          
+          echo "Despliegue completado desde: $REGISTRY_TO_USE"
+          echo "Imagen: $REGISTRY_TO_USE/$IMAGE_TO_USE:latest"
           REMOTE_SCRIPT
           
           rm -f key.pem
