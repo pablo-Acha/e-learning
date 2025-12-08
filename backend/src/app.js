@@ -13,6 +13,7 @@ import enrollmentRoutes from "./routes/enrollment.routes.js"
 import adminRoutes from "./routes/admin.routes.js"
 dotenv.config();
 
+
 const app = express();
 
 
