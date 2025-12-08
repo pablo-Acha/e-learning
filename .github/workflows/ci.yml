@@ -143,7 +143,7 @@ jobs:
           # Ejecutar nuevo contenedor
           $DOCKER_CMD run -d \
             --name elearning-frontend \
-            -p 80:80 \
+            -p 8080:80 \
             --restart unless-stopped \
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
           
