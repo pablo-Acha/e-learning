@@ -4,7 +4,7 @@ import { Plus } from "lucide-react";
 import ModuleForm from "../components/ModuleForm";
 import { useAuthStore } from "../store/useAuthStore";
 
-const API_URL = "http://3.144.152.48/api";
+const API_URL = "http://3.19.223.47/api";
 
 export default function TeacherHome() {
   const { token } = useAuthStore();

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useAuthStore } from "../store/useAuthStore";
 
-const API_URL = "http://3.144.152.48/api";
+const API_URL = "http://3.19.223.47/api";
 
 export default function AdminHome() {
   const { token } = useAuthStore();
