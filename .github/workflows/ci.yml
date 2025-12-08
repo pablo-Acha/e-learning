@@ -125,9 +125,20 @@ jobs:
           echo "${{ secrets.GITHUB_TOKEN }}" | $DOCKER_CMD login ${{ env.REGISTRY }} -u ${{ github.actor }} --password-stdin
           $DOCKER_CMD pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
           
-          # Detener y remover contenedor anterior si existe
-          $DOCKER_CMD stop elearning-frontend || true
-          $DOCKER_CMD rm elearning-frontend || true
+          # Detener y remover contenedor anterior si existe (forzar si es necesario)
+          $DOCKER_CMD stop elearning-frontend 2>/dev/null || true
+          $DOCKER_CMD rm -f elearning-frontend 2>/dev/null || true
+          
+          # Verificar si hay otro contenedor usando el puerto 80 y detenerlo
+          PORT_80_CONTAINER=$($DOCKER_CMD ps -q --filter "publish=80")
+          if [ ! -z "$PORT_80_CONTAINER" ]; then
+            echo "Deteniendo contenedor que usa el puerto 80: $PORT_80_CONTAINER"
+            $DOCKER_CMD stop $PORT_80_CONTAINER 2>/dev/null || true
+            $DOCKER_CMD rm -f $PORT_80_CONTAINER 2>/dev/null || true
+          fi
+          
+          # Esperar un momento para asegurar que el puerto se libere
+          sleep 2
           
           # Ejecutar nuevo contenedor
           $DOCKER_CMD run -d \
