@@ -84,7 +84,7 @@ export default function Login() {
         className="bg-white p-6 rounded-md shadow-md w-full max-w-sm"
       >
         <h2 className="text-2xl font-bold mb-4 text-center">
-          {mode === "login" ? "Iniciar Sesión" : "Registrar Estudiante"}
+          {mode === "login" ? "Iniciar Sesión upb" : "Registrar Estudiante"}
         </h2>
 
         {error && <div className="text-red-500 mb-2">{error}</div>}
