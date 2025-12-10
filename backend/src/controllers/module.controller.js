@@ -110,7 +110,7 @@ export const uploadVideo = async (req, res) => {
       ContentType: file.mimetype
     };
 
-    await s3.upload(params).promise();
+    await s3.send(new PutObjectCommand(params));
 
     // Guardar solo la key en la DB
     const updatedModule = await prisma.module.update({
