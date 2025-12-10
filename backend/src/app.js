@@ -14,7 +14,6 @@ import adminRoutes from "./routes/admin.routes.js"
 dotenv.config();
 
 
-
 const app = express();
 
 
