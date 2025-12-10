@@ -13,6 +13,7 @@ router.get("/", authMiddleware, getClasses);
 // Obtener módulos de una clase
 router.get("/:id/modules", verifyToken, getModulesByClass);
 
+
 // Crear módulo dentro de una clase
 router.post("/:id/modules", verifyToken, createModule);
 
