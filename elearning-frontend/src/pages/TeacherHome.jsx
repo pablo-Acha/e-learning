@@ -275,7 +275,7 @@ const handleEditModule = (mod, cls) => {
                     <div className="flex gap-1">
                       <button
                         onClick={() => handleEditModule(mod, cls)}
-                        className="bg-yellow-400 px-2 py-1 rounded text-xs"
+                        className="bg-green-400 px-2 py-1 rounded text-xs"
                       >
                         Editar
                       </button>
