@@ -26,7 +26,9 @@ jobs:
 
       - name: Build and tag Docker image
         run: |
+          # Tag principal: latest
           docker build -t pabloacha2/backend:latest ./backend
+          # Tag único por commit SHA
           docker tag pabloacha2/backend:latest pabloacha2/backend:${{ github.sha }}
 
       - name: Push images to DockerHub
@@ -45,14 +47,11 @@ jobs:
           username: ${{ secrets.EC2_USER_BACK }}
           key: ${{ secrets.EC2_KEY_BACK }}
           script: |
-            docker pull pabloacha2/backend:${{ github.sha }}
-            docker stop backend || true
-            docker rm backend || true
-            docker run -d --name backend --restart always \
-              --env-file /var/www/estudy-backend/.env \
-              -p 4000:4000 \
-              pabloacha2/backend:${{ github.sha }}
+            
+            IMAGE_TAG=${{ github.sha }}
 
+            echo "Pulling image pabloacha2/backend:$IMAGE_TAG"
+            docker pull pabloacha2/backend:$IMAGE_TAG
 
             mkdir -p /var/www/estudy-backend
 
@@ -76,10 +75,12 @@ jobs:
             AWS_BUCKET_NAME=${{ secrets.AWS_BUCKET_NAME }}
             EOF
 
+            # Detener y eliminar contenedor anterior
             docker stop backend || true
             docker rm backend || true
 
+            # Levantar contenedor nuevo con la imagen del SHA
             docker run -d --name backend --restart always \
               --env-file /var/www/estudy-backend/.env \
               -p 4000:4000 \
-              pabloacha2/backend:latest
+              pabloacha2/backend:$IMAGE_TAG
