@@ -18,6 +18,7 @@ export const createClass = async (req, res) => {
     });
 
     
+
     res.json(newClass);
   } catch (error) {
     res.status(500).json({ error: error.message });
