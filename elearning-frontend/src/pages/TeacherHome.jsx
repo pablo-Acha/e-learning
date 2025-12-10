@@ -196,7 +196,7 @@ const handleEditModule = (mod, cls) => {
       <div className="p-6 mt-6 max-w-6xl mx-auto">
         {/* Crear Clase */}
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold">Miss Clases</h2>
+          <h2 className="text-2xl font-bold">Misss Clases</h2>
           <button
             onClick={() => setShowCreateClass(true)}
             className="bg-green-600 text-white px-4 py-2 rounded-md flex items-center gap-2"
