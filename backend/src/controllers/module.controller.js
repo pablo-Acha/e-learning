@@ -176,7 +176,6 @@ export const updateModule = async (req, res) => {
   }
 };
 
-// Eliminar módulo
 export const deleteModule = async (req, res) => {
   try {
     const moduleId = req.params.id;

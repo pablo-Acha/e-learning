@@ -26,9 +26,7 @@ jobs:
 
       - name: Build and tag Docker image
         run: |
-          # Tag principal: latest
           docker build -t pabloacha2/backend:latest ./backend
-          # Tag único por commit SHA
           docker tag pabloacha2/backend:latest pabloacha2/backend:${{ github.sha }}
 
       - name: Push images to DockerHub
@@ -47,40 +45,39 @@ jobs:
           username: ${{ secrets.EC2_USER_BACK }}
           key: ${{ secrets.EC2_KEY_BACK }}
           script: |
-            
-            IMAGE_TAG=${{ github.sha }}
+            echo "Pulling latest backend image..."
 
-            echo "Pulling image pabloacha2/backend:$IMAGE_TAG"
-            docker pull pabloacha2/backend:$IMAGE_TAG
+            # Borrar contenedor actual si existe
+            docker stop backend || true
+            docker rm backend || true
 
+            # Borrar imagen antigua para liberar espacio
+            docker rmi -f pabloacha2/backend:latest || true
+
+            # Traer la nueva imagen
+            docker pull pabloacha2/backend:latest
+
+            # Crear carpeta de entorno si no existe
             mkdir -p /var/www/estudy-backend
 
+            # Crear archivo .env
             cat <<EOF > /var/www/estudy-backend/.env
-            # DATABASE
             DATABASE_URL=${{ secrets.DATABASE_URL }}
             DB_HOST=${{ secrets.DB_HOST }}
             DB_USER=${{ secrets.DB_USER }}
             DB_PASSWORD=${{ secrets.DB_PASSWORD }}
             DB_NAME=${{ secrets.DB_NAME }}
             DB_PORT=${{ secrets.DB_PORT }}
-
-            # SERVER
             PORT=${{ secrets.PORT }}
             JWT_SECRET=${{ secrets.JWT_SECRET }}
-
-            # AWS
             AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}
             AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}
             AWS_REGION=${{ secrets.AWS_REGION }}
             AWS_BUCKET_NAME=${{ secrets.AWS_BUCKET_NAME }}
             EOF
 
-            # Detener y eliminar contenedor anterior
-            docker stop backend || true
-            docker rm backend || true
-
-            # Levantar contenedor nuevo con la imagen del SHA
+            # Correr el nuevo contenedor
             docker run -d --name backend --restart always \
               --env-file /var/www/estudy-backend/.env \
               -p 4000:4000 \
-              pabloacha2/backend:$IMAGE_TAG
+              pabloacha2/backend:latest
