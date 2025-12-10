@@ -155,7 +155,7 @@ jobs:
           fi
           
           sudo chmod 600 /root/.docker/config.json
-          
+          \$DOCKER_CMD rmi -f $REGISTRY_TO_USE/$IMAGE_TO_USE:latest || true
           \$DOCKER_CMD pull $REGISTRY_TO_USE/$IMAGE_TO_USE:latest
           
           \$DOCKER_CMD stop elearning-frontend 2>/dev/null || true
