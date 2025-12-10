@@ -1,7 +1,7 @@
 import express from "express";
 import { authMiddleware,verifyToken } from "../middlewares/auth.middleware.js";
 import { getModulesByClass } from "../controllers/classes.controller.js";
-import { createModule , uploadVideo, getModuleVideo, uploadVideoMiddleware,   deleteModule} from "../controllers/module.controller.js";
+import { createModule , uploadVideo, getModuleVideo, uploadVideoMiddleware,   deleteModule, updateModule} from "../controllers/module.controller.js";
 const router = express.Router();
 
 // Genera signed URL para reproducir video
