@@ -45,7 +45,14 @@ jobs:
           username: ${{ secrets.EC2_USER_BACK }}
           key: ${{ secrets.EC2_KEY_BACK }}
           script: |
-            docker pull pabloacha2/backend:latest
+            docker pull pabloacha2/backend:${{ github.sha }}
+docker stop backend || true
+docker rm backend || true
+docker run -d --name backend --restart always \
+  --env-file /var/www/estudy-backend/.env \
+  -p 4000:4000 \
+  pabloacha2/backend:${{ github.sha }}
+
 
             mkdir -p /var/www/estudy-backend
 
