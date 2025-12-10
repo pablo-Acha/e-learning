@@ -172,7 +172,7 @@ jobs:
           
           \$DOCKER_CMD run -d \
             --name elearning-frontend \
-            -p 8080:80 \
+            -p 80:80 \
             --restart unless-stopped \
             $REGISTRY_TO_USE/$IMAGE_TO_USE:latest
           
