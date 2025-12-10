@@ -16,6 +16,6 @@ ENV DATABASE_URL="postgresql://user:pass@localhost:5432/db"
 
 RUN npx prisma generate
 
-EXPOSE 3000
+EXPOSE 4000
 
 CMD ["npm", "start"]

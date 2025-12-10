@@ -80,8 +80,12 @@ export const getModulesByClass = async (req, res) => {
   res.json({ modules });
 };
 
-const upload = multer({ storage: multer.memoryStorage() }); // memoria temporal
+// const upload = multer({ storage: multer.memoryStorage() }); // memoria temporal
 
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 500 * 1024 * 1024 }
+});
 export const uploadVideoMiddleware = upload.single("video"); // campo "video" en form-data
 
 export const uploadVideo = async (req, res) => {
