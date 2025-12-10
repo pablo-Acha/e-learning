@@ -4,7 +4,7 @@ import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
 // import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { prisma } from "../prisma.js";
 import {s3, getSignedUrl} from "../config/s3.js";
-
+import { DeleteObjectCommand } from "@aws-sdk/client-s3";
 
 export const getVideoSignedUrl = async (req, res) => {
   try {
@@ -147,6 +147,80 @@ export const getModuleVideo = async (req, res) => {
     const signedUrl = getSignedUrl(moduleData.videoUrl); // moduleData.videoUrl = key
 
     res.json({ signedUrl });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+export const deleteModule = async (req, res) => {
+  try {
+    const moduleId = req.params.id;
+
+    // Verificar que el módulo existe
+    const moduleData = await prisma.module.findUnique({
+      where: { id: moduleId },
+      include: { class: true }
+    });
+
+    if (!moduleData) {
+      return res.status(404).json({ msg: "Módulo no existe" });
+    }
+
+    // Validación: solo el teacher dueño de la clase puede eliminarlo
+    if (moduleData.class.teacherId !== req.user.id) {
+      return res.status(403).json({ msg: "No autorizado" });
+    }
+
+    // Si el módulo tenía video, eliminarlo de S3
+    if (moduleData.videoUrl) {
+      const deleteParams = {
+        Bucket: process.env.AWS_BUCKET_NAME,
+        Key: moduleData.videoUrl // aquí ya guardamos solo la key
+      };
+
+      try {
+        await s3.send(new DeleteObjectCommand(deleteParams));
+      } catch (err) {
+        console.error("Error eliminando archivo S3:", err.message);
+      }
+    }
+
+    // Eliminar el módulo de la DB
+    await prisma.module.delete({
+      where: { id: moduleId }
+    });
+
+    res.json({ msg: "Módulo eliminado correctamente" });
+
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+export const updateModule = async (req, res) => {
+  try {
+    const moduleId = req.params.id;
+    const { title, description } = req.body;
+
+    // Verificar que el módulo existe
+    const moduleData = await prisma.module.findUnique({
+      where: { id: moduleId },
+      include: { class: true }
+    });
+
+    if (!moduleData) return res.status(404).json({ msg: "Módulo no existe" });
+
+    // Validación: solo el teacher dueño de la clase puede editar
+    if (moduleData.class.teacherId !== req.user.id) {
+      return res.status(403).json({ msg: "No autorizado" });
+    }
+
+    const updatedModule = await prisma.module.update({
+      where: { id: moduleId },
+      data: { title, description }
+    });
+
+    res.json(updatedModule);
+
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
