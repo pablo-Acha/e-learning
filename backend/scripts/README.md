@@ -2,14 +2,14 @@
 
 Este directorio contiene scripts para realizar backups automáticos y restauración de la base de datos PostgreSQL del proyecto e-learning.
 
-## 📁 Estructura de Archivos
+## Estructura de Archivos
 
 - `backup-db.sh` - Script principal para crear backups de la base de datos
 - `restore-db.sh` - Script para restaurar backups
 - `setup-cron.sh` - Script para configurar el cron job automático
 - `README.md` - Esta documentación
 
-## 🚀 Instalación y Configuración
+## Instalación y Configuración
 
 ### Prerrequisitos
 
@@ -42,7 +42,7 @@ DB_HOST=host
 DB_PORT=5432
 ```
 
-## 📦 Uso de los Scripts
+## Uso de los Scripts
 
 ### 1. Backup Manual
 
@@ -95,9 +95,9 @@ cd /ruta/al/backend
 ./scripts/restore-db.sh backup_nombre_db_20241102_140530.sql.gz
 ```
 
-**⚠️ IMPORTANTE:** El script de restauración crea automáticamente un backup de seguridad antes de restaurar.
+**IMPORTANTE:** El script de restauración crea automáticamente un backup de seguridad antes de restaurar.
 
-## 📂 Estructura de Directorios
+## Estructura de Directorios
 
 Después de ejecutar los scripts, se crearán los siguientes directorios:
 
@@ -111,35 +111,35 @@ backend/
 └── scripts/         # Scripts de backup y restauración
 ```
 
-## 🔒 Seguridad
+## Seguridad
 
 - Los backups se almacenan localmente en `backend/backups/`
 - Los backups están comprimidos para ahorrar espacio
 - Se verifica la integridad de los backups después de crearlos
 - Los backups antiguos se eliminan automáticamente después de 30 días (configurable)
 
-## 📊 Características
+## Características
 
 ### Script de Backup (`backup-db.sh`)
-- ✅ Crea backups comprimidos (gzip)
-- ✅ Verifica integridad del backup
-- ✅ Rotación automática de backups antiguos (30 días por defecto)
-- ✅ Logging detallado
-- ✅ Estadísticas de backups
+- Crea backups comprimidos (gzip)
+- Verifica integridad del backup
+- Rotación automática de backups antiguos (30 días por defecto)
+- Logging detallado
+- Estadísticas de backups
 
 ### Script de Restauración (`restore-db.sh`)
-- ✅ Modo interactivo para seleccionar backup
-- ✅ Modo con archivo específico
-- ✅ Crea backup de seguridad antes de restaurar
-- ✅ Confirmación antes de restaurar
-- ✅ Verificación de integridad
+- Modo interactivo para seleccionar backup
+- Modo con archivo específico
+- Crea backup de seguridad antes de restaurar
+- Confirmación antes de restaurar
+- Verificación de integridad
 
 ### Script de Configuración (`setup-cron.sh`)
-- ✅ Configuración interactiva de frecuencia
-- ✅ Soporte para expresiones cron personalizadas
-- ✅ Reemplazo de cron jobs existentes
+- Configuración interactiva de frecuencia
+- Soporte para expresiones cron personalizadas
+- Reemplazo de cron jobs existentes
 
-## 🔧 Configuración Avanzada
+## Configuración Avanzada
 
 ### Cambiar días de retención
 
@@ -155,14 +155,14 @@ Edita `backup-db.sh` y modifica:
 BACKUP_DIR="$BACKEND_DIR/backups"  # Cambiar a la ruta deseada
 ```
 
-## 📝 Logs
+## Logs
 
 Los logs se guardan en `backend/logs/`:
 - `backup.log` - Logs de backups manuales y automáticos
 - `restore.log` - Logs de restauraciones
 - `cron.log` - Logs específicos del cron job
 
-## 🧪 Pruebas
+## Pruebas
 
 ### Probar backup manual:
 ```bash
@@ -179,7 +179,7 @@ ls -lh backups/
 ./scripts/restore-db.sh
 ```
 
-## 🐛 Solución de Problemas
+## Solución de Problemas
 
 ### Error: "pg_dump no está instalado"
 ```bash
@@ -203,19 +203,19 @@ tail -f logs/restore.log
 tail -f logs/cron.log
 ```
 
-## 📋 Checklist de Despliegue en EC2
+## Checklist de Despliegue en EC2
 
-1. ✅ Conectarse a la instancia EC2 del backend
-2. ✅ Instalar PostgreSQL client: `sudo apt-get install postgresql-client`
-3. ✅ Copiar los scripts al servidor
-4. ✅ Dar permisos de ejecución: `chmod +x scripts/*.sh`
-5. ✅ Verificar que el archivo `.env` tenga las variables de base de datos correctas
-6. ✅ Probar backup manual: `./scripts/backup-db.sh`
-7. ✅ Configurar cron job: `./scripts/setup-cron.sh`
-8. ✅ Verificar que el cron job esté activo: `crontab -l`
-9. ✅ Monitorear logs después de 24 horas para confirmar que funciona
+1. Conectarse a la instancia EC2 del backend
+2. Instalar PostgreSQL client: `sudo apt-get install postgresql-client`
+3. Copiar los scripts al servidor
+4. Dar permisos de ejecución: `chmod +x scripts/*.sh`
+5. Verificar que el archivo `.env` tenga las variables de base de datos correctas
+6. Probar backup manual: `./scripts/backup-db.sh`
+7. Configurar cron job: `./scripts/setup-cron.sh`
+8. Verificar que el cron job esté activo: `crontab -l`
+9. Monitorear logs después de 24 horas para confirmar que funciona
 
-## 🔄 Integración con CI/CD
+## Integración con CI/CD
 
 Si deseas integrar estos scripts en tu pipeline de CI/CD, puedes ejecutar:
 
@@ -224,7 +224,7 @@ Si deseas integrar estos scripts en tu pipeline de CI/CD, puedes ejecutar:
 ./scripts/backup-db.sh
 ```
 
-## 📞 Soporte
+## Soporte
 
 Para problemas o preguntas, revisa los logs en `backend/logs/` o contacta al equipo de desarrollo.
 
