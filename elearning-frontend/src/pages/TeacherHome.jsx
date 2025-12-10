@@ -13,6 +13,7 @@ export default function TeacherHome() {
   const [newClass, setNewClass] = useState({ title: "", description: "" });
   const [selectedClass, setSelectedClass] = useState(null);
   const [showCreateModule, setShowCreateModule] = useState(false);
+  const [moduleToEdit, setModuleToEdit] = useState(null);
 
   useEffect(() => {
     fetchClasses();
@@ -49,20 +50,12 @@ export default function TeacherHome() {
       console.error(err);
     }
   };
-
-  const createModule = async (moduleData) => {
+const createModuleOrUpdate = async (moduleData) => {
   try {
-    // Validar que haya un archivo de video
-    if (!moduleData.videoFile) {
-      alert("Debes subir un video para crear el módulo.");
-      return;
-    }
-
-    // 1. Crear módulo sin video (temporal)
-    const res = await fetch(
-      `${API_URL}/classes/${selectedClass.id}/modules`,
-      {
-        method: "POST",
+    if (moduleToEdit) {
+      // Actualizar módulo existente (solo título y descripción)
+      const res = await fetch(`${API_URL}/modules/${moduleToEdit.id}/video`, {
+        method: "PUT",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
@@ -70,44 +63,131 @@ export default function TeacherHome() {
         body: JSON.stringify({
           title: moduleData.title,
           description: moduleData.description,
-          order: 5,
-          videoUrl: null, // se actualizará luego
         }),
-      }
-    );
+      });
 
-    if (!res.ok) throw new Error("Error creando módulo");
-    const module = await res.json();
+      if (!res.ok) throw new Error("Error actualizando módulo");
 
-    // 2. Subir video
-    const formData = new FormData();
-    formData.append("video", moduleData.videoFile);
+      const updatedModule = await res.json();
 
-    const uploadRes = await fetch(`${API_URL}/modules/${module.id}/video`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${token}` },
-      body: formData,
-    });
+      // Actualizar estado
+      setClasses((prev) =>
+        prev.map((cls) =>
+          cls.id === selectedClass.id
+            ? {
+                ...cls,
+                modules: cls.modules.map((m) =>
+                  m.id === updatedModule.id ? updatedModule : m
+                ),
+              }
+            : cls
+        )
+      );
 
-    if (!uploadRes.ok) throw new Error("Error subiendo video");
+    } else {
+      // Crear módulo nuevo con video
+      await createModule(moduleData);
+    }
 
-    const updatedModule = await uploadRes.json();
-
-    // Actualizar estado
-    setClasses((prev) =>
-      prev.map((cls) =>
-        cls.id === selectedClass.id
-          ? { ...cls, modules: [...cls.modules, updatedModule] }
-          : cls
-      )
-    );
-
+    // Reset
     setShowCreateModule(false);
+    setModuleToEdit(null);
     setSelectedClass(null);
+
   } catch (err) {
     console.error(err);
+    alert(err.message);
   }
 };
+  // Eliminar módulo
+const handleDeleteModule = async (mod, cls) => {
+  if (!confirm(`¿Seguro que quieres eliminar "${mod.title}"?`)) return;
+
+  try {
+    const res = await fetch(`${API_URL}/modules/${mod.id}/video`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) throw new Error("Error eliminando módulo");
+
+    setClasses(prev =>
+      prev.map(c =>
+        c.id === cls.id
+          ? { ...c, modules: c.modules.filter(m => m.id !== mod.id) }
+          : c
+      )
+    );
+  } catch (err) {
+    console.error(err);
+    alert("No se pudo eliminar el módulo");
+  }
+};
+// Editar módulo
+const handleEditModule = (mod, cls) => {
+  setSelectedClass(cls);
+  setModuleToEdit(mod);
+  setShowCreateModule(true);
+};
+
+
+  const createModule = async (moduleData) => {
+    try {
+      // Validar que haya un archivo de video
+      if (!moduleData.videoFile) {
+        alert("Debes subir un video para crear el módulo.");
+        return;
+      }
+
+      // 1. Crear módulo sin video (temporal)
+      const res = await fetch(
+        `${API_URL}/classes/${selectedClass.id}/modules`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            title: moduleData.title,
+            description: moduleData.description,
+            order: 5,
+            videoUrl: null, // se actualizará luego
+          }),
+        }
+      );
+
+      if (!res.ok) throw new Error("Error creando módulo");
+      const module = await res.json();
+
+      // 2. Subir video
+      const formData = new FormData();
+      formData.append("video", moduleData.videoFile);
+
+      const uploadRes = await fetch(`${API_URL}/modules/${module.id}/video`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
+
+      if (!uploadRes.ok) throw new Error("Error subiendo video");
+
+      const updatedModule = await uploadRes.json();
+
+      // Actualizar estado
+      setClasses((prev) =>
+        prev.map((cls) =>
+          cls.id === selectedClass.id
+            ? { ...cls, modules: [...cls.modules, updatedModule] }
+            : cls
+        )
+      );
+
+      setShowCreateModule(false);
+      setSelectedClass(null);
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
 
   return (
@@ -189,9 +269,23 @@ export default function TeacherHome() {
                 {cls.modules?.map((mod) => (
                   <li
                     key={mod.id}
-                    className="px-2 py-1 bg-gray-100 rounded-md text-sm"
+                    className="flex justify-between items-center px-2 py-1 bg-gray-100 rounded-md text-sm"
                   >
-                    {mod.title} {mod.videoUrl ? "🎬" : ""}
+                    <span>{mod.title} {mod.videoUrl ? "🎬" : ""}</span>
+                    <div className="flex gap-1">
+                      <button
+                        onClick={() => handleEditModule(mod, cls)}
+                        className="bg-yellow-400 px-2 py-1 rounded text-xs"
+                      >
+                        Editar
+                      </button>
+                      <button
+                        onClick={() => handleDeleteModule(mod, cls)}
+                        className="bg-red-500 text-white px-2 py-1 rounded text-xs"
+                      >
+                        Eliminar
+                      </button>
+                    </div>
                   </li>
                 ))}
               </ul>
@@ -202,9 +296,13 @@ export default function TeacherHome() {
         {/* Crear Módulo */}
         {showCreateModule && selectedClass && (
           <ModuleForm
-            onCreate={createModule}
-            onCancel={() => setShowCreateModule(false)}
-          />
+  onCreate={createModuleOrUpdate} // función que decide si crear o actualizar
+  onCancel={() => {
+    setShowCreateModule(false);
+    setModuleToEdit(null);
+  }}
+  moduleToEdit={moduleToEdit}
+/>
         )}
       </div>
     </div>
