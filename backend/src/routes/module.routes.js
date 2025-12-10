@@ -10,9 +10,9 @@ router.get("/:id/video", verifyToken, getModuleVideo);
 router.post("/:id/video", verifyToken, uploadVideoMiddleware, uploadVideo);
 
 // Editar módulo
-router.put("/:id", authMiddleware, updateModule);
+router.put("/:id", verifyToken, updateModule);
 
 // Eliminar módulo
-router.delete("/:id", authMiddleware, deleteModule);
+router.delete("/:id", verifyToken, deleteModule);
 
 export default router;
