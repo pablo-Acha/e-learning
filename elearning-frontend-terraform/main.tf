@@ -126,7 +126,7 @@ resource "aws_eip" "frontend_eip" {
 
 resource "aws_key_pair" "deployer" {
   key_name   = "elearning-deployer-key"
-  public_key = file("/Users/leonardocarrillo/devKeys/devKey.pem.pub")
+  public_key = file("/Users/leonardocarrillo/devKeys/terrafKey.pem.pub")
 }
 
 data "aws_vpc" "default" {
