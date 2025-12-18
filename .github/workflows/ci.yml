@@ -148,13 +148,13 @@ jobs:
           
           if [ "$REGISTRY_TO_USE" = "docker.io" ]; then
             # Para Docker Hub
-            echo "{\\"auths\\":{\\"https://index.docker.io/v1/\\":{\\"username\\":\\"$LOGIN_USER\\",\\"password\\":\\"$LOGIN_TOKEN\\"}}}" | sudo tee /root/.docker/config.json > /dev/null
+            echo "{\\"auths\\":{\\"https://index.docker.io/v1/\\\":{\\"username\\":\\"$LOGIN_USER\\",\\"password\\":\\"$LOGIN_TOKEN\\"}}}" | tee ~/.docker/config.json > /dev/null
           else
             # Para GHCR
-            echo "{\\"auths\\":{\\"$REGISTRY_TO_USE\\":{\\"username\\":\\"$LOGIN_USER\\",\\"password\\":\\"$LOGIN_TOKEN\\"}}}" | sudo tee /root/.docker/config.json > /dev/null
+            echo "{\\"auths\\":{\\"$REGISTRY_TO_USE\\":{\\"username\\":\\"$LOGIN_USER\\",\\"password\\":\\"$LOGIN_TOKEN\\"}}}" | tee ~/.docker/config.json > /dev/null
           fi
           
-          sudo chmod 600 /root/.docker/config.json
+          chmod 600 ~/.docker/config.json
           \$DOCKER_CMD rmi -f $REGISTRY_TO_USE/$IMAGE_TO_USE:latest || true
           \$DOCKER_CMD pull $REGISTRY_TO_USE/$IMAGE_TO_USE:latest
           
