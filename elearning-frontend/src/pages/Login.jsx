@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router";
 import { useAuthStore } from "../store/useAuthStore";
 
-const API_URL = "http://3.19.223.47/api";
+const API_URL = "http://44.202.75.215/api";
 
 export default function Login() {
   const { setAuth } = useAuthStore();
