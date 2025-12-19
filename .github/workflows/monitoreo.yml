@@ -1,0 +1,58 @@
+name: Deploy Docker Stack to EC2
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'monitoreo/**'   # Solo se activa si se modifica cualquier archivo dentro de /monitoreo
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repo
+      uses: actions/checkout@v4
+
+    - name: Login to Docker Hub
+      run: |
+        echo "${{ secrets.DOCKERHUB_MONITOREO }}" | docker login -u "${{ secrets.DOCKERHUB_USER_MONITOREO }}" --password-stdin
+
+    - name: Build and push images
+      run: |
+        docker compose build
+        docker compose push
+
+    - name: Deploy to EC2
+      uses: appleboy/ssh-action@v1
+      with:
+        host: ${{ secrets.EC2_HOST_MONITOREO }}
+        username: ${{ secrets.EC2_USER_MONITOREO }}
+        key: ${{ secrets.EC2_KEY_MONITOREO }}
+        script: |
+          set -e
+
+          # Instalar dependencias
+          sudo yum install -y git docker
+          sudo systemctl start docker
+          sudo systemctl enable docker
+
+          # Docker compose plugin
+          if ! docker compose version; then
+            sudo mkdir -p /usr/local/lib/docker/cli-plugins
+            sudo curl -SL https://github.com/docker/compose/releases/download/v2.27.0/docker-compose-linux-x86_64 \
+              -o /usr/local/lib/docker/cli-plugins/docker-compose
+            sudo chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
+          fi
+
+          # Clonar repo vía SSH si no existe
+          if [ ! -d ~/docker-stack ]; then
+            git clone https://github.com/pablo-Acha/monitoreo.git ~/docker-stack
+          fi
+
+          cd ~/docker-stack
+          git pull origin main
+
+          docker compose down
+          docker compose up -d

@@ -1,0 +1,20 @@
+groups:
+  - name: example-alerts
+    rules:
+      - alert: HighCPUUsage
+        expr: node_cpu_seconds_total > 0.9
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Uso elevado de CPU"
+          description: "El uso de CPU es mayor al 90% durante 1 minuto."
+
+      - alert: HighRequestRate
+        expr: rate(http_requests_total[1m]) > 5
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Tasa elevada de solicitudes HTTP"
+          description: "La tasa de solicitudes HTTP supera las 5 por segundo."
