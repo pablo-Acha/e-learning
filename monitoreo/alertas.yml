@@ -10,6 +10,7 @@ groups:
           summary: "Uso elevado de CPU"
           description: "El uso de CPU es mayor al 90% durante 1 minuto."
 
+
       - alert: HighRequestRate
         expr: rate(http_requests_total[1m]) > 5
         for: 1m
