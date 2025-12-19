@@ -35,71 +35,75 @@ jobs:
           docker push pabloacha2/backend:${{ github.sha }}
 
   deploy:
-    needs: build-and-push
-    runs-on: ubuntu-latest
-    steps:
-      - name: SSH and deploy on EC2
-        uses: appleboy/ssh-action@v1
-        with:
-          host: ${{ secrets.EC2_HOST_BACK }}
-          username: ${{ secrets.EC2_USER_BACK }}
-          key: ${{ secrets.EC2_KEY_BACK }}
-          script: |
-            echo "Pulling latest backend image..."
+      needs: build-and-push
+      runs-on: ubuntu-latest
+      steps:
+        - name: SSH and deploy on EC2
+          uses: appleboy/ssh-action@v1
+          with:
+            host: ${{ secrets.EC2_HOST_BACK }}
+            username: ${{ secrets.EC2_USER_BACK }}
+            key: ${{ secrets.EC2_KEY_BACK }}
+            script: |
+              echo "Pulling latest backend image..."
 
-            # Borrar contenedor actual si existe
-            docker stop backend || true
-            docker rm backend || true
+              # Borrar contenedor actual si existe
+              sudo docker stop backend || true
+              sudo docker rm backend || true
 
-            # Borrar imagen antigua para liberar espacio
-            docker rmi -f pabloacha2/backend:latest || true
+              # Borrar imagen antigua para liberar espacio
+              sudo docker rmi -f pabloacha2/backend:latest || true
 
-            # Traer la nueva imagen
-            docker pull pabloacha2/backend:latest
+              # Traer la nueva imagen
+              sudo docker pull pabloacha2/backend:latest
 
-            # Crear carpeta de entorno si no existe
-            mkdir -p /var/www/estudy-backend
+              # Crear carpeta de entorno si no existe (con sudo)
+              sudo mkdir -p /var/www/estudy-backend
 
-            # Crear archivo .env
-            cat <<EOF > /var/www/estudy-backend/.env
-            DATABASE_URL=${{ secrets.DATABASE_URL }}
-            DB_HOST=${{ secrets.DB_HOST }}
-            DB_USER=${{ secrets.DB_USER }}
-            DB_PASSWORD=${{ secrets.DB_PASSWORD }}
-            DB_NAME=${{ secrets.DB_NAME }}
-            DB_PORT=${{ secrets.DB_PORT }}
-            PORT=${{ secrets.PORT }}
-            JWT_SECRET=${{ secrets.JWT_SECRET }}
-            AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}
-            AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}
-            AWS_REGION=${{ secrets.AWS_REGION }}
-            AWS_BUCKET_NAME=${{ secrets.AWS_BUCKET_NAME }}
-            EOF
+              # Crear archivo .env (con sudo)
+              sudo tee /var/www/estudy-backend/.env > /dev/null <<EOF
+              DATABASE_URL=${{ secrets.DATABASE_URL }}
+              DB_HOST=${{ secrets.DB_HOST }}
+              DB_USER=${{ secrets.DB_USER }}
+              DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+              DB_NAME=${{ secrets.DB_NAME }}
+              DB_PORT=${{ secrets.DB_PORT }}
+              PORT=${{ secrets.PORT }}
+              JWT_SECRET=${{ secrets.JWT_SECRET }}
+              AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}
+              AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}
+              AWS_REGION=${{ secrets.AWS_REGION }}
+              AWS_BUCKET_NAME=${{ secrets.AWS_BUCKET_NAME }}
+              EOF
 
-            # Correr el nuevo contenedor
-            docker run -d --name backend --restart always \
-              --env-file /var/www/estudy-backend/.env \
-              -p 4000:4000 \
-              pabloacha2/backend:latest
+              # Cambiar permisos del archivo .env para que sea accesible
+              sudo chmod 644 /var/www/estudy-backend/.env
 
-      - name: Send Discord notification on success
-        if: success()
-        uses: sarisia/actions-status-discord@v1
-        with:
-          webhook: ${{ secrets.DISCORD_WEBHOOK_URL }}
-          title: "Backend Deploy Success"
-          description: "Despliegue exitoso del backend a EC2"
-          color: "00ff00"
-          username: "GitHub Actions CI/CD"
-          avatar: "https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png"
+              # Correr el nuevo contenedor (con sudo)
+              sudo docker run -d --name backend --restart always \
+                --env-file /var/www/estudy-backend/.env \
+                -p 4000:4000 \
+                pabloacha2/backend:latest
 
-      - name: Send Discord notification on failure
-        if: failure()
-        uses: sarisia/actions-status-discord@v1
-        with:
-          webhook: ${{ secrets.DISCORD_WEBHOOK_URL }}
-          title: "Backend Deploy Failed"
-          description: "Error en el despliegue del backend a EC2"
-          color: "ff0000"
-          username: "GitHub Actions CI/CD"
-          avatar: "https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png"
+              echo "Backend desplegado exitosamente en puerto 4000"
+        - name: Send Discord notification on success
+          if: success()
+          uses: sarisia/actions-status-discord@v1
+          with:
+            webhook: ${{ secrets.DISCORD_WEBHOOK_URL }}
+            title: "Backend Deploy Success"
+            description: "Despliegue exitoso del backend a EC2"
+            color: "00ff00"
+            username: "GitHub Actions CI/CD"
+            avatar: "https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png"
+
+        - name: Send Discord notification on failure
+          if: failure()
+          uses: sarisia/actions-status-discord@v1
+          with:
+            webhook: ${{ secrets.DISCORD_WEBHOOK_URL }}
+            title: "Backend Deploy Failed"
+            description: "Error en el despliegue del backend a EC2"
+            color: "ff0000"
+            username: "GitHub Actions CI/CD"
+            avatar: "https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png"
