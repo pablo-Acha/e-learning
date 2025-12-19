@@ -95,9 +95,12 @@ jobs:
               sudo chmod 644 /var/www/estudy-backend/.env
 
               # Correr el nuevo contenedor (con sudo)
+              sudo mkdir -p /var/log/backend
+
               sudo docker run -d --name backend --restart always \
                 --env-file /var/www/estudy-backend/.env \
                 -p 4000:4000 \
+                -v /var/log/backend:/var/log \
                 pabloacha2/backend:latest
 
               echo "Backend desplegado exitosamente en puerto 4000"
