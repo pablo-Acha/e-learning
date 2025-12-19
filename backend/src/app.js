@@ -53,7 +53,7 @@ app.use("/enrollments", enrollmentRoutes);
 app.use("/admin", adminRoutes);
 
 app.get("/", (req, res) => {
-  res.json({ msg: "E-Study Backend OK!" });
+  res.js    on({ msg: "E-Study Backend OK!" });
 });
 // app.get("/test-db", async (req, res) => {
 //   try {
