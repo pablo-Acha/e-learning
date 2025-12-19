@@ -7,6 +7,21 @@ on:
     paths:
       - "backend/**"
       - ".github/workflows/backend-ci-cd.yml"
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+        - production
+        - staging
+      force_rebuild:
+        description: 'Force rebuild from scratch'
+        required: false
+        default: false
+        type: boolean
 
 jobs:
   build-and-push:
